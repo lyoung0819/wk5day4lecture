@@ -221,3 +221,7 @@ CALL add_actor('Lexie', 'Young');
 
 SELECT * FROM actor a 
 WHERE first_name LIKE 'L%';
+
+
+-- To REMOVE a procedure, use DROP PROCEDURE procedure_name
+DROP PROCEDURE IF EXISTS update_loyalty_status;
