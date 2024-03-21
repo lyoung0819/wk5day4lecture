@@ -110,3 +110,114 @@ SELECT * FROM customers_in_country('Mexico');
 
 SELECT * FROM customers_in_country('Canada')
 WHERE district = 'Ontario';
+
+-- This is a procedure that is not giving us a return back
+UPDATE customer 
+SET first_name = 'Patty'
+WHERE customer_id = 2; 
+
+
+-- FUNCTIONS v PROCEDURES
+-- https://www.enterprisedb.com/postgres-tutorials/everything-you-need-know-about-postgres-stored-procedures-and-functions
+
+-- STORED PROCEDURES
+
+-- To CREATE a PROCEDURE, very similar to Fucntion but leaving out a RETURNS
+
+-- Example: Reset all of the loyalty_member = False (in customer)
+UPDATE customer
+SET loyalty_member = FALSE;
+
+SELECT * FROM customer c 
+WHERE loyalty_member = FALSE;
+
+-- Create a Procedure that will make any customer who has spent > $100 a loyalty member
+-- Step1. Subquery! Will first need to find customers who've spent >= $100 
+SELECT customer_id
+FROM payment p
+GROUP BY customer_id 
+HAVING SUM(amount) >= '100';
+
+-- Step2. Write an update statement to set the above customers as loyalty members
+UPDATE customer 
+SET loyalty_member = TRUE 
+WHERE customer_id IN (
+	SELECT customer_id
+	FROM payment p
+	GROUP BY customer_id 
+	HAVING SUM(amount) >= '100'
+);
+
+SELECT * FROM customer c
+WHERE loyalty_member = FALSE;
+
+-- Step3. Take Step2 and put it into a stored procedure
+CREATE OR REPLACE PROCEDURE update_loyalty_status()
+LANGUAGE plpgsql
+AS $$
+BEGIN 
+	UPDATE customer 
+	SET loyalty_member = TRUE 
+	WHERE customer_id IN (
+		SELECT customer_id
+		FROM payment p
+		GROUP BY customer_id 
+		HAVING SUM(amount) >= '100'
+);
+END;
+$$;
+
+SELECT * FROM customer;
+
+-- To Execute a Prodcedure - use CALL
+CALL update_loyalty_status(); 
+SELECT * FROM customer
+WHERE loyalty_member = TRUE;
+
+-- Let's pretend that a user close to the threshold makes a new payment 
+SELECT customer_id, SUM(amount)
+FROM payment p 
+GROUP BY customer_id 
+HAVING SUM(amount) BETWEEN 95 AND 100;
+
+-- Make a new payment
+INSERT INTO payment(customer_id, staff_id, rental_id, amount, payment_date)
+VALUES (175, 1, 1, 4.99, '2024-03-21 12:02:30');
+
+-- Call the procedure again
+CALL update_loyalty_status();
+
+-- Check 
+SELECT * FROM customer c 
+WHERE customer_id = 175;
+
+-- Creating a procedure for instering data
+
+SELECT * FROM actor a;
+
+SELECT NOW(); -- lil f(x) TO give us CURRENT time 
+
+-- Manual process below: 
+INSERT INTO actor(first_name, last_name, last_update)
+VALUES (
+	'Cillian', 'Murphy', NOW()
+);
+
+INSERT INTO actor(first_name, last_name, last_update)
+VALUES (
+	'Emma', 'Stone', NOW()
+);
+
+CREATE OR REPLACE PROCEDURE add_actor(first_name VARCHAR, last_name VARCHAR)
+LANGUAGE plpgsql
+AS $$
+BEGIN 
+	INSERT INTO actor(first_name, last_name, last_update)
+	VALUES (first_name, last_name, NOW());
+END;
+$$;
+
+CALL add_actor('Lexie', 'Young');
+
+SELECT * FROM actor a 
+WHERE first_name LIKE 'L%';
